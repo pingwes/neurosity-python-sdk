@@ -19,10 +19,17 @@ print(info)
 
 
 def callback(data):
+
     print(data)
 
 
+neurosity.get_timesync()
+
+
 unsubscribe = neurosity.focus(callback)
+neurosity.add_marker(
+    label="test"
+)
 
 time.sleep(10)
 unsubscribe()

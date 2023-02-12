@@ -1,6 +1,6 @@
 import pyrebase
 import atexit
-from neurosity.config import PyRebase
+from config import PyRebase
 
 class neurosity_sdk:
     def __init__(self, options):
@@ -50,21 +50,33 @@ class neurosity_sdk:
             self.db.child(client_path).remove(self.token)
 
     # @TODO: handle resnponse
-    def add_action(self, action):
+    def add_action(self, action, callback=None):
         if ("command" not in action):
             raise ValueError("A command is required for actions")
 
         if ("action" not in action):
             raise ValueError("An action is required for actions")
 
+        if ("message" not in action):
+            action.setDefault("message", None)
+
+
         device_id = self.options["device_id"]
         actions_path = f"devices/{device_id}/actions"
 
-        action.setdefault("responseRequired", False)
-        action.setdefault("responseTimeout", None)
-
         push_result = self.db.child(actions_path).push(action, self.token)
-        return push_result
+
+        if "responseRequired" in action:
+            if action["responseRequired"]:
+                response_timeout = action["responseTimeout"] or 600000
+                path = actions_path + "/" + push_result["name"] + "/response"
+
+                print("path: " + str(path))
+                response = self.get_from_path(path)
+                print("response: " + str(response))
+            return response
+
+        return ""
 
     def add_subscription(self, metric, label, atomic):
         client_id = self.client_id
@@ -169,6 +181,20 @@ class neurosity_sdk:
                 "timestamp": self.get_server_timestamp()
             }
         })
+
+    def get_timesync(self):
+
+        def callback(data):
+            print("callback data: " + str(data))
+
+        return self.add_action({
+            "command": "timesync",
+            "action": "get",
+            "responseRequired": True,
+            "responseTimeout": 250,
+            "message": {}
+        }, callback=callback)
+
 
     def brainwaves_raw(self, callback):
         return self.stream_metric(callback, "brainwaves", "raw", False)
